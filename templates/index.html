@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Guard Agri Alert</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Guard Agri Alert</h1>
+        <form class="weather-form" id="weatherForm">
+            <label for="city" align="left">Enter City:</label>
+            <input type="text" id="cityInput" name="city" placeholder="Type a city..." autocomplete="off">
+            <ul id="cityList"></ul>
+            <button type="submit">Get Weather</button>
+        </form>
+        <div class="weather-result" id="weatherResult"></div>
+    </div>
+
+    <script>
+        const cityInput = document.getElementById('cityInput');
+        const cityList = document.getElementById('cityList');
+        const weatherForm = document.getElementById('weatherForm');
+        const weatherResult = document.getElementById('weatherResult');
+
+        // Fetch city suggestions
+        cityInput.addEventListener('input', async () => {
+            const query = cityInput.value;
+            if (query.length > 1) {
+                const response = await fetch(`/get_cities?query=${query}`);
+                const cities = await response.json();
+                cityList.innerHTML = '';
+                cities.forEach(city => {
+                    const li = document.createElement('li');
+                    li.textContent = `${city.city}, ${city.country}`;
+                    li.onclick = () => {
+                        cityInput.value = city.city;
+                        cityList.innerHTML = '';
+                    };
+                    cityList.appendChild(li);
+                });
+            } else {
+                cityList.innerHTML = '';
+            }
+        });
+
+        // Fetch weather information
+        weatherForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(weatherForm);
+            const response = await fetch('/get_weather', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.error) {
+                weatherResult.innerHTML = `<p>${data.error}</p>`;
+                return;
+            }
+
+            const { weather, alerts, suggestions } = data;
+            let html = `<h2>Weather in ${weather.location}</h2>`;
+            html += `<p>${weather.temp_c}°C, ${weather.condition}</p>`;
+            html += `<img src="${weather.icon}" alt="Weather icon">`;
+
+            if (alerts.length > 0) {
+                html += `<h3>Alerts:</h3>`;
+                alerts.forEach(alert => {
+                    html += `<div class="alert-box"><p>${alert.headline}</p><p>${alert.desc}</p></div>`;
+                });
+            } else if (suggestions.length > 0) {
+                html += `<h3>Farming Suggestions:</h3>`;
+                suggestions.forEach(suggestion => {
+                    html += `<p>${suggestion}</p>`;
+                });
+            }
+
+            weatherResult.innerHTML = html;
+        });
+    </script>
+</body>
+</html>
